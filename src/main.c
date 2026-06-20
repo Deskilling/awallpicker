@@ -2,7 +2,7 @@
 
 #include "app.h"
 
-int main(int argc, char **argv) {
-  AppConfig config = AppConfigFromArgs(argc, argv);
-  return AppRun(&config);
+int main(int argc, char** argv) {
+	AppConfig config = AppConfigFromArgs(argc, argv);
+	return AppRun(&config);
 }

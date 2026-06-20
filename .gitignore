@@ -2,3 +2,6 @@ wallpicker
 *.o
 .cache/
 compile_commands.json
+
+.direnv/
+.envrc

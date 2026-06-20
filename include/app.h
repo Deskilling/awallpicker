@@ -14,10 +14,12 @@
 #define DEFAULT_SPACING 15.0f
 #define DEFAULT_WINDOW_WIDTH 1920
 #define DEFAULT_WINDOW_HEIGHT 1080
+#define DEFAULT_RECURSIVE 0
 
 typedef struct {
 	Texture2D tex;
 	char* filename;
+	char* dir_path;
 	float currentScale;
 	float currentColor;
 	// Cached render coordinates to avoid redundant layout calculations in the
@@ -43,6 +45,7 @@ typedef struct {
 	float spacing;
 	float angle;
 	SessionBackend backend;
+	bool recursive;
 } AppConfig;
 
 typedef struct {
@@ -55,6 +58,8 @@ typedef struct {
 
 	Image hex_mask;
 	int img_size;
+
+	bool recursive;
 
 	float scroll_offset;
 	float target_scroll_offset;

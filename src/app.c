@@ -73,9 +73,13 @@ AppConfig AppConfigFromArgs(int argc, char** argv) {
 	config.spacing = DEFAULT_SPACING;
 	config.angle = 0.0f; // vertical by default
 	config.backend = DetectSessionBackend();
+	config.recursive = DEFAULT_RECURSIVE;
 
-	static struct option long_options[] = {
-	    {"cols", required_argument, 0, 'c'}, {"spacing", required_argument, 0, 's'}, {"angle", required_argument, 0, 'a'}, {0, 0, 0, 0}};
+	static struct option long_options[] = {{"cols", required_argument, 0, 'c'},
+	                                       {"spacing", required_argument, 0, 's'},
+	                                       {"angle", required_argument, 0, 'a'},
+	                                       {"recursive", no_argument, 0, 'r'},
+	                                       {0, 0, 0, 0}};
 
 	int opt;
 	int option_index = 0;
@@ -83,7 +87,7 @@ AppConfig AppConfigFromArgs(int argc, char** argv) {
 
 	opterr = 0;
 
-	while ((opt = getopt_long(argc, argv, "c:s:a:", long_options, &option_index)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:s:a:r", long_options, &option_index)) != -1) {
 		switch (opt) {
 		case 'c': {
 			errno = 0;
@@ -113,6 +117,10 @@ AppConfig AppConfigFromArgs(int argc, char** argv) {
 			} else {
 				fprintf(stderr, "Warning: Invalid angle '%s', falling back to default 0.0\n", optarg);
 			}
+			break;
+		}
+		case 'r': {
+			config.recursive = true;
 			break;
 		}
 		case '?':
@@ -165,6 +173,8 @@ int AppRun(const AppConfig* config) {
 		AppShutdown(&app);
 		return 1;
 	}
+
+	app.recursive = config->recursive;
 
 	if (!LoadWallpapers(&app)) {
 		AppShutdown(&app);

@@ -95,7 +95,7 @@ SelectionResult RunUI(App* app, const AppConfig* config) {
 
 		if (hoveredIndex != -1 && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
 			result.valid = true;
-			result.full_target_path = JoinPath(app->wp_dir, app->wallpapers[hoveredIndex].filename);
+			result.full_target_path = JoinPath(app->wallpapers[hoveredIndex].dir_path, app->wallpapers[hoveredIndex].filename);
 
 			float relX = app->wallpapers[hoveredIndex].render_x / (float)GetScreenWidth();
 			float relY = (GetScreenHeight() - app->wallpapers[hoveredIndex].render_y) / (float)GetScreenHeight();

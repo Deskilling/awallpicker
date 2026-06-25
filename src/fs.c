@@ -1,6 +1,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "fs.h"
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>

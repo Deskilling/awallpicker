@@ -1,9 +1,10 @@
-#include "ui.h"
 #include "app.h"
 #include "fs.h"
-#include "raylib.h"
 #include "render.h"
+#include "ui.h"
+
 #include <math.h>
+#include <raylib.h>
 
 SelectionResult RunUI(App* app, const AppConfig* config) {
 	SelectionResult result = {0};
@@ -24,7 +25,7 @@ SelectionResult RunUI(App* app, const AppConfig* config) {
 		float stepX = 1.73205f * HEX_RADIUS + spacing;
 		float stepY = 1.5f * HEX_RADIUS + spacing;
 
-		int totalRows = (app->wp_count + cols - 1) / cols;
+		int totalRows = (app->hexagon_cnt + cols - 1) / cols;
 		float totalHeight = (2.0f * HEX_RADIUS) + (totalRows - 1) * stepY;
 
 		float center_x = ((cols - 1) * stepX + stepX / 2.0f) / 2.0f;
@@ -46,7 +47,7 @@ SelectionResult RunUI(App* app, const AppConfig* config) {
 
 		int hoveredIndex = -1;
 
-		for (int i = 0; i < app->wp_count; i++) {
+		for (int i = 0; i < app->hexagon_cnt; i++) {
 			int row = i / cols;
 			int col = i % cols;
 
@@ -64,8 +65,8 @@ SelectionResult RunUI(App* app, const AppConfig* config) {
 			float currentX = GetScreenWidth() / 2.0f + rot_x;
 			float currentY = GetScreenHeight() / 2.0f + rot_y;
 
-			app->wallpapers[i].render_x = currentX;
-			app->wallpapers[i].render_y = currentY;
+			app->hexagons[i].render_x = currentX;
+			app->hexagons[i].render_y = currentY;
 
 			float dx = mousePoint.x - currentX;
 			float dy = mousePoint.y - currentY;
@@ -87,22 +88,29 @@ SelectionResult RunUI(App* app, const AppConfig* config) {
 			float targetScale = (i == hoveredIndex) ? 1.15f : 1.0f;
 			float targetColor = (i == hoveredIndex) ? 255.0f : 130.0f;
 
-			app->wallpapers[i].currentScale += (targetScale - app->wallpapers[i].currentScale) * 0.15f;
-			app->wallpapers[i].currentColor += (targetColor - app->wallpapers[i].currentColor) * 0.15f;
+			app->hexagons[i].currentScale += (targetScale - app->hexagons[i].currentScale) * 0.15f;
+			app->hexagons[i].currentColor += (targetColor - app->hexagons[i].currentColor) * 0.15f;
 		}
 
 		RenderWallpapers(app, hoveredIndex, config->angle);
 
 		if (hoveredIndex != -1 && IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
-			result.valid = true;
-			result.full_target_path = JoinPath(app->wallpapers[hoveredIndex].dir_path, app->wallpapers[hoveredIndex].filename);
+			Hexagon* h = &app->hexagons[hoveredIndex];
+			if (h->type == WALLPAPER) {
+				Wallpaper* wp = (Wallpaper*)h->content;
 
-			float relX = app->wallpapers[hoveredIndex].render_x / (float)GetScreenWidth();
-			float relY = (GetScreenHeight() - app->wallpapers[hoveredIndex].render_y) / (float)GetScreenHeight();
-			result.rel_x = relX;
-			result.rel_y = relY;
+				result.valid = true;
+				result.full_target_path = JoinPath(wp->dir_path, wp->filename);
 
-			break;
+				float rel_x = h->render_x / (float)GetScreenWidth();
+				float rel_y = (GetScreenHeight() - h->render_y) / (float)GetScreenHeight();
+				result.rel_x = rel_x;
+				result.rel_y = rel_y;
+
+				break;
+			} else if (h->type == DIRECTORY) {
+				// TODO dir
+			}
 		}
 
 		if (IsKeyPressed(KEY_ESCAPE)) {

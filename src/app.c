@@ -3,12 +3,12 @@
 #include "app.h"
 #include "apply.h"
 #include "fs.h"
-#include "raylib.h"
 #include "ui.h"
 #include "wallpaper.h"
 
 #include <errno.h>
 #include <getopt.h>
+#include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,6 +74,7 @@ AppConfig AppConfigFromArgs(int argc, char** argv) {
 	config.angle = 0.0f; // vertical by default
 	config.backend = DetectSessionBackend();
 	config.recursive = DEFAULT_RECURSIVE;
+	config.flatten = DEFAULT_FLATTEN;
 
 	static struct option long_options[] = {{"cols", required_argument, 0, 'c'},
 	                                       {"spacing", required_argument, 0, 's'},
@@ -181,7 +182,7 @@ int AppRun(const AppConfig* config) {
 		return 1;
 	}
 
-	if (app.wp_count == 0) {
+	if (app.hexagon_cnt == 0) {
 		printf("No wallpapers in .png, .jpg, or .jpeg format were found in %s.\n", app.wp_dir);
 		AppShutdown(&app);
 		return 0;
@@ -206,7 +207,9 @@ static void AppShutdown(App* app) {
 		return;
 	}
 
-	UnloadWallpapers(app);
+	if (app->hexagons) {
+		UnloadHexagons(app);
+	}
 
 	if (app->wp_dir != NULL) {
 		free(app->wp_dir);

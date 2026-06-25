@@ -1,12 +1,13 @@
 #define _POSIX_C_SOURCE 200809L
 #define _DEFAULT_SOURCE
 
-#include "wallpaper.h"
+#include "app.h"
 #include "fs.h"
-#include "raylib.h"
+#include "wallpaper.h"
 
 #include <dirent.h>
 #include <math.h>
+#include <raylib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,21 +47,18 @@ bool LoadWallpapers(App* app) {
 	}
 
 	if (app->capacity == 0) {
-		app->wallpapers = NULL;
-		app->wp_count = 0;
+		app->hexagons = NULL;
+		app->hexagon_cnt = 0;
 		return true;
 	}
 
-	app->wallpapers = calloc((size_t)app->capacity, sizeof(Wallpaper));
-	if (app->wallpapers == NULL) {
-		fprintf(stderr,
-		        "Fatal Error: memory allocation failed (attempted to allocate %d "
-		        "wallpaper slots)\n",
-		        app->capacity);
+	app->hexagons = calloc((size_t)app->capacity, sizeof(Hexagon));
+	if (app->hexagons == NULL) {
+		fprintf(stderr, "Fatal Error: memory allocation failed (attempted to allocate %d hexagon slots)\n", app->capacity);
 		return false;
 	}
 
-	app->wp_count = 0;
+	app->hexagon_cnt = 0;
 
 	if (app->recursive) {
 		return LoadWallpapersRecursive(app, app->wp_dir);
@@ -69,7 +67,7 @@ bool LoadWallpapers(App* app) {
 	dir = opendir(app->wp_dir);
 	if (dir == NULL) {
 		fprintf(stderr, "Error: Unable to reopen directory %s\n", app->wp_dir);
-		UnloadWallpapers(app);
+		UnloadHexagons(app);
 		return false;
 	}
 
@@ -93,39 +91,6 @@ bool LoadWallpapers(App* app) {
 
 	closedir(dir);
 	return true;
-}
-
-void UnloadWallpapers(App* app) {
-	if (app == NULL) {
-		return;
-	}
-
-	if (app->wallpapers != NULL) {
-		for (int i = 0; i < app->wp_count; i++) {
-			if (app->wallpapers[i].tex.id != 0) {
-				UnloadTexture(app->wallpapers[i].tex);
-			}
-			if (app->wallpapers[i].filename != NULL) {
-				free(app->wallpapers[i].filename);
-			}
-			if (app->wallpapers[i].dir_path != NULL) {
-				free(app->wallpapers[i].dir_path);
-			}
-		}
-
-		free(app->wallpapers);
-		app->wallpapers = NULL;
-	}
-
-	app->wp_count = 0;
-	app->capacity = 0;
-
-	if (app->hex_mask.data != NULL) {
-		UnloadImage(app->hex_mask);
-		app->hex_mask = (Image){0};
-	}
-
-	app->img_size = 0;
 }
 
 static int CountWallpapers(const char* dir_path) {
@@ -161,8 +126,6 @@ static int CountWallpapersRecursive(const char* dir_path) {
 			continue;
 		}
 
-		// printf("%s\n", ent->d_name);
-
 		if (ent->d_type == DT_DIR) {
 			char* subdir_path = JoinPath(dir_path, ent->d_name);
 			if (subdir_path != NULL) {
@@ -191,7 +154,7 @@ static bool LoadSingleWallpaper(App* app, const char* dir_path, const char* file
 		return false;
 	}
 
-	if (app->wp_count >= app->capacity) {
+	if (app->hexagon_cnt >= app->capacity) {
 		return false;
 	}
 
@@ -241,17 +204,24 @@ static bool LoadSingleWallpaper(App* app, const char* dir_path, const char* file
 	}
 
 	if (img.data != NULL && img.width > 1) {
-		Wallpaper* wp = &app->wallpapers[app->wp_count];
+		Wallpaper* wp = calloc(1, sizeof(Wallpaper));
+		if (wp == NULL) {
+			fprintf(stderr, "Warning: out of memory allocating Wallpaper for %s\n", filename);
+			goto cleanup;
+		}
 
 		wp->filename = strdup(filename);
 		if (wp->filename == NULL) {
 			fprintf(stderr, "Warning: out of memory allocating filename for %s\n", filename);
+			free(wp);
 			goto cleanup;
 		}
 
 		wp->dir_path = strdup(dir_path);
-		if (wp->filename == NULL) {
+		if (wp->dir_path == NULL) {
 			fprintf(stderr, "Warning: out of memory allocating dir_path for %s\n", filename);
+			free(wp->filename);
+			free(wp);
 			goto cleanup;
 		}
 
@@ -259,13 +229,17 @@ static bool LoadSingleWallpaper(App* app, const char* dir_path, const char* file
 		if (wp->tex.id == 0) {
 			fprintf(stderr, "Warning: failed to create texture for %s\n", filename);
 			free(wp->filename);
-			wp->filename = NULL;
+			free(wp->dir_path);
+			free(wp);
 			goto cleanup;
 		}
 
-		wp->currentScale = 1.0f;
-		wp->currentColor = 130.0f;
-		app->wp_count++;
+		Hexagon* h = &app->hexagons[app->hexagon_cnt];
+		h->type = WALLPAPER;
+		h->content = wp;
+		h->currentScale = 1.0f;
+		h->currentColor = 130.0f;
+		app->hexagon_cnt++;
 		ok = true;
 	}
 
@@ -279,6 +253,7 @@ cleanup:
 	return ok;
 }
 
+// TODO add support for flatten option (currently it just flattens)
 static bool LoadWallpapersRecursive(App* app, const char* dir_path) {
 	DIR* dir = opendir(dir_path);
 	struct dirent* ent;

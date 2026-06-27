@@ -88,7 +88,7 @@ AppConfig AppConfigFromArgs(int argc, char** argv) {
 
 	opterr = 0;
 
-	while ((opt = getopt_long(argc, argv, "c:s:a:r", long_options, &option_index)) != -1) {
+	while ((opt = getopt_long(argc, argv, "c:s:a:rf", long_options, &option_index)) != -1) {
 		switch (opt) {
 		case 'c': {
 			errno = 0;
@@ -122,6 +122,10 @@ AppConfig AppConfigFromArgs(int argc, char** argv) {
 		}
 		case 'r': {
 			config.recursive = true;
+			break;
+		}
+		case 'f': {
+			config.flatten = true;
 			break;
 		}
 		case '?':
@@ -176,6 +180,7 @@ int AppRun(const AppConfig* config) {
 	}
 
 	app.recursive = config->recursive;
+	app.flatten = config->flatten;
 
 	if (!LoadWallpapers(&app)) {
 		AppShutdown(&app);

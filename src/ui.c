@@ -1,10 +1,18 @@
+#define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE
+
 #include "app.h"
 #include "fs.h"
 #include "render.h"
 #include "ui.h"
+#include "wallpaper.h"
 
 #include <math.h>
 #include <raylib.h>
+#include <stdlib.h>
+#include <string.h>
+
+static void SwitchDirectory(App* app, Directory* dir);
 
 SelectionResult RunUI(App* app, const AppConfig* config) {
 	SelectionResult result = {0};
@@ -109,7 +117,10 @@ SelectionResult RunUI(App* app, const AppConfig* config) {
 
 				break;
 			} else if (h->type == DIRECTORY) {
-				// TODO dir
+				Directory* dir = (Directory*)h->content;
+				SwitchDirectory(app, dir);
+				app->scroll_offset = 0.0f;
+				app->target_scroll_offset = 0.0f;
 			}
 		}
 
@@ -119,4 +130,32 @@ SelectionResult RunUI(App* app, const AppConfig* config) {
 	}
 
 	return result;
+}
+
+static void SwitchDirectory(App* app, Directory* dir) {
+	if (app == NULL || dir == NULL || dir->path == NULL)
+		return;
+
+	char* path = strdup(dir->path);
+	if (path == NULL)
+		return;
+
+	UnloadHexagons(app);
+
+	free(app->wp_dir);
+	app->wp_dir = path;
+
+	app->capacity = CountWallpapers(app, app->wp_dir);
+	if (app->capacity <= 0) {
+		app->hexagons = NULL;
+		app->hexagon_cnt = 0;
+		return;
+	}
+
+	app->hexagons = calloc((size_t)app->capacity, sizeof(Hexagon));
+	if (app->hexagons == NULL)
+		return;
+
+	app->hexagon_cnt = 0;
+	LoadFromDir(app, app->wp_dir);
 }

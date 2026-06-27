@@ -83,6 +83,7 @@ typedef struct {
 	int img_size;
 
 	bool recursive;
+	bool flatten;
 
 	float scroll_offset;
 	float target_scroll_offset;

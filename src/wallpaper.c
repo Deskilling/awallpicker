@@ -14,10 +14,8 @@
 #include <unistd.h>
 
 static Image GenerateHexMask(int size, float radius, float angle_deg);
-static int CountWallpapers(const char* dir_path);
 static bool LoadSingleWallpaper(App* app, const char* dir_path, const char* filename);
-static int CountWallpapersRecursive(const char* dir_path);
-static bool LoadWallpapersRecursive(App* app, const char* dir_path);
+static bool LoadSingleDirectory(App* app, const char* dir_path, const char* dirname);
 
 bool InitWallpaperResources(App* app) {
 	if (app == NULL) {
@@ -31,15 +29,12 @@ bool InitWallpaperResources(App* app) {
 }
 
 bool LoadWallpapers(App* app) {
-	DIR* dir = NULL;
-	struct dirent* ent = NULL;
-
 	if (app == NULL || app->wp_dir == NULL) {
 		fprintf(stderr, "Error: invalid app state for wallpaper loading\n");
 		return false;
 	}
 
-	app->capacity = app->recursive ? CountWallpapersRecursive(app->wp_dir) : CountWallpapers(app->wp_dir);
+	app->capacity = CountWallpapers(app, app->wp_dir);
 
 	if (app->capacity < 0) {
 		fprintf(stderr, "Error: Unable to open directory %s\n", app->wp_dir);
@@ -60,59 +55,10 @@ bool LoadWallpapers(App* app) {
 
 	app->hexagon_cnt = 0;
 
-	if (app->recursive) {
-		return LoadWallpapersRecursive(app, app->wp_dir);
-	}
-
-	dir = opendir(app->wp_dir);
-	if (dir == NULL) {
-		fprintf(stderr, "Error: Unable to reopen directory %s\n", app->wp_dir);
-		UnloadHexagons(app);
-		return false;
-	}
-
-	while ((ent = readdir(dir)) != NULL) {
-		if (!IsSupportedWallpaperFile(ent->d_name)) {
-			continue;
-		}
-
-		if (WindowShouldClose()) {
-			break;
-		}
-
-		BeginDrawing();
-		ClearBackground(BLANK);
-		DrawText("Loading & Caching Wallpapers...", GetScreenWidth() / 2 - 250, GetScreenHeight() / 2, 30, WHITE);
-		DrawText(ent->d_name, GetScreenWidth() / 2 - 250, GetScreenHeight() / 2 + 40, 20, GRAY);
-		EndDrawing();
-
-		(void)LoadSingleWallpaper(app, app->wp_dir, ent->d_name);
-	}
-
-	closedir(dir);
-	return true;
+	return LoadFromDir(app, app->wp_dir);
 }
 
-static int CountWallpapers(const char* dir_path) {
-	DIR* dir = opendir(dir_path);
-	struct dirent* ent;
-	int count = 0;
-
-	if (dir == NULL) {
-		return -1;
-	}
-
-	while ((ent = readdir(dir)) != NULL) {
-		if (IsSupportedWallpaperFile(ent->d_name)) {
-			count++;
-		}
-	}
-
-	closedir(dir);
-	return count;
-}
-
-static int CountWallpapersRecursive(const char* dir_path) {
+int CountWallpapers(App* app, const char* dir_path) {
 	DIR* dir = opendir(dir_path);
 	struct dirent* ent;
 	int count = 0;
@@ -127,13 +73,16 @@ static int CountWallpapersRecursive(const char* dir_path) {
 		}
 
 		if (ent->d_type == DT_DIR) {
-			char* subdir_path = JoinPath(dir_path, ent->d_name);
-			if (subdir_path != NULL) {
-				int subdir_count = CountWallpapersRecursive(subdir_path);
-				if (subdir_count >= 0) {
-					count += subdir_count;
+			if (app->flatten && app->recursive) {
+				char* subdir_path = JoinPath(dir_path, ent->d_name);
+				if (subdir_path != NULL) {
+					int sub = CountWallpapers(app, subdir_path);
+					if (sub >= 0)
+						count += sub;
+					free(subdir_path);
 				}
-				free(subdir_path);
+			} else if (app->recursive) {
+				count++;
 			}
 		} else if (IsSupportedWallpaperFile(ent->d_name)) {
 			count++;
@@ -142,6 +91,84 @@ static int CountWallpapersRecursive(const char* dir_path) {
 
 	closedir(dir);
 	return count;
+}
+
+bool LoadFromDir(App* app, const char* dir_path) {
+	DIR* dir = opendir(dir_path);
+	struct dirent* ent;
+
+	if (dir == NULL) {
+		fprintf(stderr, "Error: Unable to open directry %s\n", app->wp_dir);
+		return false;
+	}
+
+	while ((ent = readdir(dir)) != NULL) {
+		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
+			continue;
+		}
+
+		if (WindowShouldClose()) {
+			closedir(dir);
+			return false;
+		}
+
+		if (ent->d_type == DT_DIR) {
+			if (app->flatten) {
+				char* subdir_path = JoinPath(dir_path, ent->d_name);
+				if (subdir_path != NULL) {
+					LoadFromDir(app, subdir_path);
+					free(subdir_path);
+				}
+			} else if (app->recursive) {
+				LoadSingleDirectory(app, dir_path, ent->d_name);
+			}
+		} else if (IsSupportedWallpaperFile(ent->d_name)) {
+			BeginDrawing();
+			ClearBackground(BLANK);
+			DrawText("Loading & Caching Wallpapers...", GetScreenWidth() / 2 - 250, GetScreenHeight() / 2, 30, WHITE);
+			DrawText(ent->d_name, GetScreenWidth() / 2 - 250, GetScreenHeight() / 2 + 40, 20, GRAY);
+			EndDrawing();
+
+			(void)LoadSingleWallpaper(app, dir_path, ent->d_name);
+		}
+	}
+
+	closedir(dir);
+	return true;
+}
+
+static bool LoadSingleDirectory(App* app, const char* dir_path, const char* dirname) {
+	if (app == NULL || dir_path == NULL || dirname == NULL) {
+		return false;
+	}
+	if (app->hexagon_cnt >= app->capacity) {
+		return false;
+	}
+
+	Directory* dir = calloc(1, sizeof(Directory));
+	if (dir == NULL) {
+		fprintf(stderr, "Error: out of memory allocating directory");
+		return false;
+	}
+
+	dir->path = JoinPath(dir_path, dirname);
+	if (dir->path == NULL) {
+		free(dir);
+		return false;
+	}
+
+	dir->sub_dirs = NULL;
+	dir->sub_dirs_cnt = 0;
+	dir->wallpapers = NULL;
+	dir->wallpaper_cnt = 0;
+
+	Hexagon* h = &app->hexagons[app->hexagon_cnt];
+	h->type = DIRECTORY;
+	h->content = dir;
+	h->currentScale = 1.0f;
+	h->currentColor = 130.0f;
+	app->hexagon_cnt++;
+	return true;
 }
 
 static bool LoadSingleWallpaper(App* app, const char* dir_path, const char* filename) {
@@ -251,46 +278,6 @@ cleanup:
 	free(cache_img_path);
 	free(full_img_path);
 	return ok;
-}
-
-// TODO add support for flatten option (currently it just flattens)
-static bool LoadWallpapersRecursive(App* app, const char* dir_path) {
-	DIR* dir = opendir(dir_path);
-	struct dirent* ent;
-
-	if (dir == NULL) {
-		return -1;
-	}
-
-	while ((ent = readdir(dir)) != NULL) {
-		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0) {
-			continue;
-		}
-
-		if (WindowShouldClose()) {
-			closedir(dir);
-			return -1;
-		}
-
-		if (ent->d_type == DT_DIR) {
-			char* subdir_path = JoinPath(dir_path, ent->d_name);
-			if (subdir_path != NULL) {
-				LoadWallpapersRecursive(app, subdir_path);
-				free(subdir_path);
-			}
-		} else if (IsSupportedWallpaperFile(ent->d_name)) {
-			BeginDrawing();
-			ClearBackground(BLANK);
-			DrawText("Loading & Caching Wallpapers...", GetScreenWidth() / 2 - 250, GetScreenHeight() / 2, 30, WHITE);
-			DrawText(ent->d_name, GetScreenWidth() / 2 - 250, GetScreenHeight() / 2 + 40, 20, GRAY);
-			EndDrawing();
-
-			(void)LoadSingleWallpaper(app, dir_path, ent->d_name);
-		}
-	}
-
-	closedir(dir);
-	return true;
 }
 
 static Image GenerateHexMask(int size, float radius, float angle_deg) {

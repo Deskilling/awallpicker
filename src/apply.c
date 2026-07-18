@@ -19,7 +19,7 @@ static bool RunUserHook(const char* wall_path, const char* relX_str, const char*
 	}
 
 	char hook_path[PATH_MAX];
-	int n = snprintf(hook_path, sizeof(hook_path), "%s/.config/hypr-wallpicker/apply-wallpaper.sh", home);
+	int n = snprintf(hook_path, sizeof(hook_path), "%s/.config/awallpicker/apply-wallpaper.sh", home);
 
 	if (n < 0 || (size_t)n >= sizeof(hook_path)) {
 		return false;

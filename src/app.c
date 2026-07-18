@@ -170,7 +170,7 @@ int AppRun(const AppConfig* config) {
 	}
 
 	SetConfigFlags(FLAG_WINDOW_TRANSPARENT | FLAG_WINDOW_UNDECORATED);
-	InitWindow(config->window_width, config->window_height, "wallpicker");
+	InitWindow(config->window_width, config->window_height, "awallpicker");
 
 	app.angle = config->angle;
 	if (!InitWallpaperResources(&app)) {

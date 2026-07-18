@@ -38,7 +38,7 @@ bool GetCacheDir(char* out_path, size_t max_len) {
 		return false;
 	}
 
-	int n = snprintf(out_path, max_len, "%s/.cache/wallpicker", home);
+	int n = snprintf(out_path, max_len, "%s/.cache/awallpicker", home);
 	if (n < 0 || (size_t)n >= max_len) {
 		fprintf(stderr, "Error: cache path is too long\n");
 		return false;

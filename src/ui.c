@@ -7,12 +7,13 @@
 #include "ui.h"
 #include "wallpaper.h"
 
+#include <stdio.h>
 #include <math.h>
 #include <raylib.h>
 #include <stdlib.h>
 #include <string.h>
 
-static void SwitchDirectory(App* app, Directory* dir);
+static void SwitchDirectory(App* app, char* dir);
 
 SelectionResult RunUI(App* app, const AppConfig* config) {
 	SelectionResult result = {0};
@@ -118,9 +119,17 @@ SelectionResult RunUI(App* app, const AppConfig* config) {
 				break;
 			} else if (h->type == DIRECTORY) {
 				Directory* dir = (Directory*)h->content;
-				SwitchDirectory(app, dir);
+				SwitchDirectory(app, dir->path);
 				app->scroll_offset = 0.0f;
 				app->target_scroll_offset = 0.0f;
+			}
+		}
+
+		if (IsKeyPressed(KEY_BACKSPACE)) {
+			printf("%u\n", app->prev_wp_cnt);
+			if (app->prev_wp_cnt != 0) {
+				int wp_cnt = app->prev_wp_cnt;
+				SwitchDirectory(app, app->prev_wp_dir[--wp_cnt]);
 			}
 		}
 
@@ -132,18 +141,29 @@ SelectionResult RunUI(App* app, const AppConfig* config) {
 	return result;
 }
 
-static void SwitchDirectory(App* app, Directory* dir) {
-	if (app == NULL || dir == NULL || dir->path == NULL)
+static void SwitchDirectory(App* app, char* dir) {
+	if (app == NULL || dir == NULL) {
 		return;
+	}
 
-	char* path = strdup(dir->path);
-	if (path == NULL)
+	if (app->prev_wp_cnt == 0 && app->wp_dir == dir) {
 		return;
+	}
+
+	int wp_cnt = app->prev_wp_cnt;
+	wp_cnt--;
+	if (app->prev_wp_dir[wp_cnt] == dir) {
+		free(app->wp_dir);
+		app->wp_dir = app->prev_wp_dir[wp_cnt];
+		app->prev_wp_cnt--;
+	} else {
+		app->prev_wp_dir[app->prev_wp_cnt] = strdup(app->wp_dir);
+		free(app->wp_dir);
+		app->wp_dir = strdup(dir);
+		app->prev_wp_cnt++;
+	}
 
 	UnloadHexagons(app);
-
-	free(app->wp_dir);
-	app->wp_dir = path;
 
 	app->capacity = CountWallpapers(app, app->wp_dir);
 	if (app->capacity <= 0) {

@@ -156,6 +156,9 @@ int AppRun(const AppConfig* config) {
 		return 1;
 	}
 
+	app.prev_wp_cnt = 0;
+	app.prev_wp_dir = malloc(sizeof(char*));
+
 	if (config->wallpaper_dir != NULL) {
 		app.wp_dir = strdup(config->wallpaper_dir);
 		if (app.wp_dir == NULL) {

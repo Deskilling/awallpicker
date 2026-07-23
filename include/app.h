@@ -72,6 +72,9 @@ typedef struct {
 
 typedef struct {
 	char* wp_dir;
+
+	int prev_wp_cnt;
+	char** prev_wp_dir;
 	char cache_dir[PATH_MAX];
 
 	Hexagon* hexagons;

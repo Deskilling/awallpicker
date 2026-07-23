@@ -2,7 +2,7 @@ CC = gcc
 CPPFLAGS = -Iinclude
 
 CFLAGS = -O2 -Wall -Wextra -Werror
-DEBUG_CFLAGS = -g -O0 -Wall -Wextra -Werror
+DEBUG_CFLAGS = -g -O2 -Wall -Wextra -Werror
 
 LDFLAGS =
 LDLIBS = -lraylib -lm -ldl -lpthread -lrt

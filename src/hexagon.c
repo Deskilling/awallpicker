@@ -16,6 +16,7 @@ void UnloadDirectory(Directory* dir) {
 	}
 	free(dir->sub_dirs);
 
+	dir->sub_dirs = NULL;
 	for (int i = 0; i < dir->wallpaper_cnt; i++) {
 		free(dir->wallpapers[i]->filename);
 		free(dir->wallpapers[i]->dir_path);
